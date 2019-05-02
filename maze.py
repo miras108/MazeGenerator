@@ -3,6 +3,10 @@ import inputbox
 import time
 import random
 import slider
+import sys
+
+# sys.setrecursionlimit(20000)
+
 
 class Point:
     MAX_VALUE = 30
@@ -147,6 +151,52 @@ class Maze:
         for stack_point in self.solution_stack:
             self.create_additional_path(stack_point)
 
+    def tmp_read_input(self):
+        x = int(input('x = '))
+        y = int(input('y = '))
+        return Point(x, y)
+
+    def append_path(self, path, point: Point, previous_neighbour: Point):
+        print(point.get_x(), point.get_y())
+        for c in self.solution_stack:
+            if point.get_x() == c.get_x() and point.get_y() == c.get_y():
+                return path
+
+        for c in path:
+            if point.get_x() == c.get_x() and point.get_y() == c.get_y():
+                return None
+
+        neighbours_corridors = self.find_neigbours_corridors(point)
+        for corridor in neighbours_corridors:
+            if previous_neighbour is None or not (previous_neighbour.get_x() == corridor.get_x() and previous_neighbour.get_y() == corridor.get_y()):
+                x = self.append_path(path, corridor, point)
+                if x is not None:
+                    x.append(point)
+                    return x
+
+        else:
+            return None
+
+    def add_inter_point(self):
+        point = self.tmp_read_input()
+        path = []
+        path = self.append_path(path, point, None)
+        self.solution_stack += path
+        #
+        # previous_corridor = point
+        # while True:
+        #     neighbour_corridor = self.find_neigbours_corridors(point)
+        #     #neighbour_corridor.remove(previous_corridor)
+        #     for corridor in range(len(neighbour_corridor)):
+        #         if corridor in self.solution_stack:
+        #             self.solution_stack += path
+        #             return None
+        #         else:
+        #             previous_corridor = corridor
+        #             next_corridor = random.choice(neighbour_corridor)
+        #             break
+
+
     def tmp_print_maze(self):
         print()
         for i in range(self._height):
@@ -167,9 +217,11 @@ class Maze:
 
 n_dim = int(inputbox.display_input_box(400, 400, 'WIDTH'))
 m_dim = int(inputbox.display_input_box(400, 400, 'HEIGHT'))
-m = Maze(n_dim, m_dim, Point(0, 0), Point(1, 1))
+m = Maze(n_dim, m_dim, Point(0, 0), Point(15, 15))
 m.create_main_path()
 m.create_additionals_path()
+
+
 # m.tmp_print_maze()
 #m.create_additional_path()
 # m.tmp_print_maze()
@@ -227,6 +279,12 @@ def build_grid(maze: Maze):
             x = x + w                                                    # move cell to new position
         y = y + w
 build_grid(m)
+pygame.display.update()
+
+m.add_inter_point()
+build_grid(m)
+pygame.display.update()
+
 
 def text_objects(text, font):
     text_surface = font.render(text, True, BLACK)
@@ -250,6 +308,48 @@ def add_button(x, y, dx, dy, message, inactive_colour, active_colour, action):
     text_rectangle.center = ((x + dx/2), (y + dy/2))
     screen.blit(text_surface, text_rectangle)
 
+def add_square(point: Point, width, inactive_colour, active_colour, action, starting_position):
+    mouse = pygame.mouse.get_pos()
+    click = pygame.mouse.get_pressed()
+    start_pos = starting_position
+    #small_text = pygame.font.Font('freesansbold.ttf', 20)
+    dx = (point.get_x()) * width + start_pos
+    dy = (point.get_x()) * width + start_pos
+
+    # GENERATE BUTTON
+    if dx < mouse[0] < dx + width and dy < mouse[1] < dy + width:
+        pygame.draw.rect(screen, active_colour, (dx, dy, dx+width, dy+width), 0)
+        # if click[0] == 1:
+        #     action()
+    else:
+        pygame.draw.rect(screen, inactive_colour, (dx, dy, dx+width, dy+width), 0)
+
+def build_grid(maze: Maze):
+    starting_position = 20
+    #y = grid_start_point.get_y()                                                        # start a new row
+    for i in range(maze._height):
+        #x = grid_start_point.get_x()                                                            # set x coordinate to start position
+        for j in range(maze._width):
+            if maze.labirynth[i][j] == True:
+                p = Point(i, j)
+                if (p.get_x() == maze._start_point.get_x() and p.get_y() == maze._start_point.get_y()) or \
+                        (p.get_x() == maze._end_point.get_x() and p.get_y() == maze._end_point.get_y()):
+                    add_square(p, w, RED, YELLOW)
+                else:
+                    for sol in maze.solution_stack:
+                        if sol.get_x() == p.get_x() and sol.get_y() == p.get_y():
+                            pygame.draw.rect(screen, GREEN, (x, y, w - 2, w - 2))
+                            break
+                    else:
+                        pygame.draw.rect(screen, BLUE, (x, y, w - 2, w - 2))
+            else:
+                pygame.draw.rect(screen, WHITE, (x, y, w-2, w-2))
+
+            #grid.append((x, y))                                           # add cell to grid list
+            x = x + w                                                    # move cell to new position
+        y = y + w
+
+
 ##### pygame loop #######
 running = True
 while running:
@@ -257,8 +357,11 @@ while running:
     clock.tick(FPS)
     pygame.display.update()
     add_button(1100, 800, 150, 50, 'Quit...', RED, BRIGHT_RED, quit)
+
+
     # process input (events)
     for event in pygame.event.get():
+
         # check for closing the window
         if event.type == pygame.QUIT:
             running = False
